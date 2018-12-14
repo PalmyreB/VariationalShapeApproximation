@@ -1,15 +1,11 @@
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Random;
 
 import Jcg.geometry.*;
-import Jcg.polyhedron.Face;
-import Jcg.polyhedron.Halfedge;
-import Jcg.polyhedron.Polyhedron_3;
-import Jcg.polyhedron.Vertex;
+import Jcg.polyhedron.*;
 
 /**
  * 
@@ -105,7 +101,6 @@ public class ShapeApproximation {
 	
 	private void geometry_partitioning(int k) {
 		
-		
 		// Initial seeding
 		Face<Point_3> nearestFace;
 		List<Face<Point_3>> seedTriangles = new ArrayList<Face<Point_3>>(k); 
@@ -118,7 +113,7 @@ public class ShapeApproximation {
 			minDistortionError = -1;
 			nearestFace = region.get(0);
 			for(Face<Point_3> triangle : region) {
-				currentError = barycenter_proxy_metric(triangle, this.proxies[i]);
+				currentError = L21_metric(triangle, this.proxies[i]);
 				triangle.tag = -1;
 				if(currentError < minDistortionError || minDistortionError == -1) {
 					minDistortionError = currentError;
@@ -187,12 +182,51 @@ public class ShapeApproximation {
 		return (double)barycenter1.distanceFrom(proxy.X);
 	}
 	
-	private double L2_metric(Face<Point_3> surface, Proxy proxy) {
+	public double L2_metric(Face<Point_3> surface, Proxy proxy) {
 		throw new RuntimeException("Not implemented yet");
 	}
 	
-	private double L21_metric(Face<Point_3> surface, Proxy proxy) {
-		throw new RuntimeException("Not implemented yet");
+	public double L21_metric(Face<Point_3> surface, Proxy proxy) {
+		// DIstance between the normals
+		Point_3 x = this.getBarycenterOfFace(surface);
+		Vector_3 n = this.getNormalOfFace(surface);
+		Vector_3 prod = n.crossProduct(proxy.N);
+		double norm = Math.sqrt((double) prod.squaredLength());
+		if(norm == 0.) {
+			double numerator = (double) x.distanceFrom(proxy.X);
+			double denominator = Math.sqrt((double) n.squaredLength() + 1);
+			return numerator / denominator;
+		}
+		prod = prod.divisionByScalar(norm);
+		Vector_3 diff = (Vector_3) x.minus(proxy.X);
+		double distance = Math.abs((double)prod.innerProduct(diff));
+
+		// Area calculated thanks to Heron's formula
+		double S; // semiperimeter
+		double A; // area
+		double a, b, c; // side lengths of triangle
+
+		if(surface instanceof TempFace)
+			surface = ((TempFace)surface).copiedFace;
+
+		int[] vertexIndices = surface.getVertexIndices(this.polyhedron3D);
+		Point_3[] points = new Point_3[3];
+		for(int i=0; i < 3; i++)
+			points[i] = this.polyhedron3D.vertices.get(vertexIndices[i]).getPoint();
+		a = (double) points[0].distanceFrom(points[1]);
+		b = (double) points[1].distanceFrom(points[2]);
+		c = (double) points[0].distanceFrom(points[2]);
+		S = 0.5 * (a+b+c);
+		A = Math.sqrt(S*(S-a)*(S-b)*(S-c));
+
+		return A*Math.pow(distance, 2);
+	}
+
+	private double region_L21_metric(List<Face<Point_3>> region, Proxy proxy) {
+		double result = 0;
+		for(Face<Point_3> triangle : region)
+			result += this.L21_metric(triangle, proxy);
+		return result;
 	}
 	
 	private Point_3 getBarycenterOfFace(Face<Point_3> surface) {
@@ -213,14 +247,13 @@ public class ShapeApproximation {
 		int[] vertexIndices = surface.getVertexIndices(this.polyhedron3D);
 		if(vertexIndices.length < 3)
 			throw new RuntimeException("Not a valid surface");
-		Point_3 barycenter = new Point_3();
 		Point_3[] points = new Point_3[3];
 		for(int i=0; i < 3; i++)
 			points[i] = this.polyhedron3D.vertices.get(vertexIndices[i]).getPoint();
 		Vector_3 V = new Vector_3(points[0], points[1]);
 		Vector_3 W = new Vector_3(points[0], points[2]);
 		Vector_3 N = V.crossProduct(W);
-		N = N.multiplyByScalar(1./Math.pow((double)N.squaredLength(), 2));
+		N = N.divisionByScalar(Math.sqrt((double)N.squaredLength()));
 		return N;
 	}
 

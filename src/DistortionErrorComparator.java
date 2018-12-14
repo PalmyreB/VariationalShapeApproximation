@@ -12,8 +12,8 @@ public class DistortionErrorComparator implements Comparator<Face<Point_3>> {
     @Override
     public int compare(Face<Point_3> f, Face<Point_3> g)
     {
-    	double distanceF = sa.barycenter_proxy_metric(f, sa.proxies[f.tag]);
-    	double distanceG = sa.barycenter_proxy_metric(g, sa.proxies[g.tag]);
+    	double distanceF = sa.L21_metric(f, sa.proxies[f.tag]);
+    	double distanceG = sa.L21_metric(g, sa.proxies[g.tag]);
         if (distanceF < distanceG)
             return -1;
         if (distanceF > distanceG)
