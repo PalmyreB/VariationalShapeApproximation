@@ -7,20 +7,11 @@ import java.util.Random;
 import Jcg.geometry.*;
 import Jcg.polyhedron.*;
 
-/**
- * 
- *
- */
+
 public class ShapeApproximation {
 
 	public Polyhedron_3<Point_3> polyhedron3D;
-	
-	// TODO: create a class region?
-	// extension of List<Face<Point_3>> with proxy
 	public ArrayList<List<Face<Point_3>>> partition;
-	
-	// TODO: create class for proxies
-	// extension of face with normal and barycenter?
 	public Proxy[] proxies;
 	
 	public ShapeApproximation(Polyhedron_3<Point_3> polyhedron3D) {
@@ -34,21 +25,19 @@ public class ShapeApproximation {
 	public void approximate(int k) {
 		// First k-partitioning
 		// k vertices are randomly selected
-		
-		// TODO: choose k!
 		this.k_partitioning(k);
 		
+		// Geometry partitioning
 		// Knowing a current set of proxies P , we wish to update the partition
 		// R while trying to minimize the distortion error E(R, P ) in the
 		// process.
-		//geometry partitioning
 		this.geometry_partitioning(k);
 		
-		// proxy fitting
-		//this.proxy_fitting();
+		// Proxy fitting
+		// this.proxy_fitting();
 		
 		
-		// meshing
+		// Meshing
 	}
 	
 	/**
@@ -58,14 +47,14 @@ public class ShapeApproximation {
 	 * triangle’s barycenter and its normal.
 	 */
 	public void k_partitioning(int k) {
-		
 		for(Face<Point_3> face : this.polyhedron3D.facets)
 			face.tag  = -1;
+
 		// Pick k random triangles
 		final Random rnd = new Random();
-		final List<Face<Point_3>> randomFaces = new ArrayList<Face<Point_3>>(k);
-		
+		List<Face<Point_3>> randomFaces = new ArrayList<Face<Point_3>>(k);
 		this.proxies = new Proxy[k];
+
 	    for (int i = 0; i < k; i++) {
 	        int v = 0;
 	        Face<Point_3> f;
@@ -84,7 +73,7 @@ public class ShapeApproximation {
 	    	this.partition.add(new ArrayList<Face<Point_3>>());
 	    }
 	    for(Face<Point_3> face : this.polyhedron3D.facets) {
-	    	if(face.tag != -1 && this.partition.size() > face.tag)
+	    	if(face.tag != -1)
 	    		this.partition.get(face.tag).remove(face);
 	    	double minDistance = -1;
 	    	for(Face<Point_3> randomFace : randomFaces) {
@@ -96,6 +85,8 @@ public class ShapeApproximation {
 	    	}
 	    	this.partition.get(face.tag).add(face);
 	    }
+	    for(List<Face<Point_3>> r : partition)
+	    	System.out.println(r.size());
 	    
 	}
 	
@@ -108,14 +99,14 @@ public class ShapeApproximation {
 		double currentError;
 		List<Face<Point_3>> region;
 		
-		for(int i = 0; i < this.partition.size(); i++) {
+		for(int i = 0; i < k; i++) {
 			region = this.partition.get(i);
 			minDistortionError = -1;
 			nearestFace = region.get(0);
 			for(Face<Point_3> triangle : region) {
 				currentError = L21_metric(triangle, this.proxies[i]);
 				triangle.tag = -1;
-				if(currentError < minDistortionError || minDistortionError == -1) {
+				if(minDistortionError == -1 || currentError < minDistortionError) {
 					minDistortionError = currentError;
 					nearestFace = triangle;
 				}
