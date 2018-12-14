@@ -17,12 +17,12 @@ public class MeshViewer extends PApplet {
 	int k=4; // number of regions of partition
 	
 	//String filename="OFF/high_genus.off";
-	//String filename="OFF/sphere.off";
+	String filename="OFF/sphere.off";
 	//String filename="OFF/cube.off";
 	//String filename="OFF/torus_33.off";
 	//String filename="OFF/tore.off";
 	//String filename="OFF/tri_hedra.off";
-	String filename="OFF/letter_a.off";
+	//String filename="OFF/letter_a.off";
 	//String filename="OFF/star.off";
 	//String filename="OFF/tri_triceratops.off";
 	//String filename="OFF/twisted.off";
@@ -33,7 +33,7 @@ public class MeshViewer extends PApplet {
 		  ArcBall arcball = new ArcBall(this);
 		  
 		  this.mesh=new SurfaceMesh(this, filename);
-		  this.sa = new ShapeApproximation(this.mesh.polyhedron3D);
+		  this.sa = new ShapeApproximation(this.mesh.polyhedron3D, this.k);
 
 		  
 //		  System.out.println(""+ms.polyhedron3D.facesToString());
@@ -71,13 +71,13 @@ public class MeshViewer extends PApplet {
 		}
 		
 		public void approximate() {
-			this.sa.approximate(k);
+			this.sa.approximate();
 			this.mesh.updateScaleFactor();
 			this.mesh.polyhedron3D.isValid(false);
 		}
 		
 		public void partition() {
-			this.sa.k_partitioning(k);
+			this.sa.k_partitioning();
 			this.mesh.updateScaleFactor();
 			this.mesh.polyhedron3D.isValid(false);
 		}
