@@ -11,7 +11,7 @@ import Jcg.polyhedron.*;
  */
 public class MeshViewer extends PApplet {
 	SurfaceMesh mesh; // 3d surface mesh
-	// ShapeApproximation sa;
+	ShapeApproximation sa;
 	int renderType=0; // choice of type of rendering
 	int renderModes=3; // number of rendering modes
 	
@@ -24,12 +24,14 @@ public class MeshViewer extends PApplet {
 	//String filename="OFF/letter_a.off";
 	//String filename="OFF/star.off";
 	//String filename="OFF/tri_triceratops.off";
+	//String filename="OFF/twisted.off";
 	
 	public void setup() {
 		  size(800,600,P3D);
 		  ArcBall arcball = new ArcBall(this);
 		  
 		  this.mesh=new SurfaceMesh(this, filename);
+		  this.sa = new ShapeApproximation(this.mesh.polyhedron3D);
 
 		  
 //		  System.out.println(""+ms.polyhedron3D.facesToString());
@@ -60,13 +62,13 @@ public class MeshViewer extends PApplet {
 		
 		public void keyPressed(){
 			  switch(key) {
-			    // case('s'):case('S'): this.subdivide(); break;
+			    case('a'):case('A'): this.approximate(); break;
 			    case('r'):this.renderType=(this.renderType+1)%this.renderModes; break;
 			  }
 		}
 		
 		public void approximate() {
-			//this.sa.approximate();
+			this.sa.approximate();
 			this.mesh.updateScaleFactor();
 			this.mesh.polyhedron3D.isValid(false);
 		}
