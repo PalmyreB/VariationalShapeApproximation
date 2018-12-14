@@ -82,7 +82,8 @@ public class SurfaceMesh {
 		
 		Point_3 u=h.getOpposite().getVertex().getPoint();
 		view.noStroke();
-		view.fill(200,200,200,255); // color of the triangle
+		// view.fill(200,200,200,255); // color of the triangle
+		view.fill(230 + f.tag*50 % 256,30 + f.tag*50 % 256,100 - f.tag*50 % 256,255);
 		
 		while(pEdge.getVertex()!=h.getOpposite().getVertex()) {
 			Point_3 v=pEdge.getOpposite().getVertex().getPoint();
@@ -101,7 +102,7 @@ public class SurfaceMesh {
 		//this.drawAxis();
 		
 		// draw all faces
-		view.beginShape(view.TRIANGLES);
+		view.beginShape(MeshViewer.TRIANGLES);
 		for(Face<Point_3> f: this.polyhedron3D.facets) {
 				this.drawFace(f);
 		}
