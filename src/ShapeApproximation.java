@@ -85,16 +85,21 @@ public class ShapeApproximation {
 	    	}
 	    	this.partition.get(face.tag).add(face);
 	    }
+
+	    // Debugging
 	    for(List<Face<Point_3>> r : partition)
-	    	System.out.println(r.size());
+	    	System.out.print(r.size() + "\t");
+	    System.out.println();
 	    
 	}
 	
 	private void geometry_partitioning(int k) {
 		
 		// Initial seeding
-		Face<Point_3> nearestFace;
-		List<Face<Point_3>> seedTriangles = new ArrayList<Face<Point_3>>(k); 
+		TempFace nearestFace;
+		DistortionErrorComparator comp = new DistortionErrorComparator(this);
+		PriorityQueue<TempFace> firstSeedTriangles = new PriorityQueue<TempFace>(3*this.polyhedron3D.sizeOfFacets(), (Comparator<? super Face<Point_3>>) comp);
+		PriorityQueue<TempFace> seedTriangles = new PriorityQueue<TempFace>(3*this.polyhedron3D.sizeOfFacets(), (Comparator<? super Face<Point_3>>) comp);
 		double minDistortionError;
 		double currentError;
 		List<Face<Point_3>> region;
@@ -102,17 +107,17 @@ public class ShapeApproximation {
 		for(int i = 0; i < k; i++) {
 			region = this.partition.get(i);
 			minDistortionError = -1;
-			nearestFace = region.get(0);
+			nearestFace = new TempFace(region.get(0));
 			for(Face<Point_3> triangle : region) {
 				currentError = L21_metric(triangle, this.proxies[i]);
 				triangle.tag = -1;
 				if(minDistortionError == -1 || currentError < minDistortionError) {
 					minDistortionError = currentError;
-					nearestFace = triangle;
+					nearestFace = new TempFace(triangle);
 				}
 			}
 			nearestFace.tag = i;
-			seedTriangles.add(nearestFace);
+			firstSeedTriangles.add(nearestFace);
 		}
 		
 		// Distortion minimizing flooding
@@ -120,38 +125,43 @@ public class ShapeApproximation {
 		for(int i = 0; i < k; i++) {
 	    	this.partition.add(new ArrayList<Face<Point_3>>());
 	    }
-		DistortionErrorComparator comp = new DistortionErrorComparator(this);
-		PriorityQueue<TempFace> neighborFaces = new PriorityQueue<TempFace>(3*this.polyhedron3D.sizeOfFacets(), (Comparator<? super Face<Point_3>>) comp);
-		for(Face<Point_3> seedTriangle: seedTriangles) {
-			Halfedge<Point_3> h = seedTriangle.getEdge();
+
+		seedTriangles.addAll(firstSeedTriangles);
+		for(TempFace seedTriangle: firstSeedTriangles) {
+			Halfedge<Point_3> h = seedTriangle.copiedFace.getEdge();
 			Halfedge<Point_3> e = h.getNext();
 			do {
 				TempFace f = new TempFace(e.getOpposite().face);
 				f.tag = seedTriangle.tag;
-				neighborFaces.add(f);
+				seedTriangles.add(f);
 				e = e.getNext();
 			}while(!e.equals(h));
 		}
 		
-		while(!neighborFaces.isEmpty()) {
-			TempFace tempF = neighborFaces.poll();
+		while(!seedTriangles.isEmpty()) {
+			TempFace tempF = seedTriangles.poll();
 			Face<Point_3> f = tempF.copiedFace;
-			if(f.tag != -1) {
+			if(f.tag == -1) {
 				f.tag = tempF.tag;
-				this.partition.get(tempF.tag).add(f);
+				this.partition.get(f.tag).add(f);
 				Halfedge<Point_3> h = f.getEdge();
 				Halfedge<Point_3> e = h.getNext();
 				do {
 					if(e.getOpposite().face.tag == -1) {
 						TempFace g = new TempFace(e.getOpposite().face);
 						g.tag = f.tag;
-						neighborFaces.add(g);
+						seedTriangles.add(g);
 					}
 					e = e.getNext();
 				}while(!e.equals(h));
 			}
 				
 		}
+		
+		// Debugging
+	    for(List<Face<Point_3>> r : partition)
+	    	System.out.print(r.size() + "\t");
+	    System.out.println();
 	}
 	
 	private void proxy_fitting() {
