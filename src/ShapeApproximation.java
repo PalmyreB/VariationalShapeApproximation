@@ -7,22 +7,20 @@ import java.util.Random;
 import Jcg.geometry.*;
 import Jcg.polyhedron.*;
 
-
 public class ShapeApproximation {
 
 	public Polyhedron_3<Point_3> polyhedron3D;
 	public ArrayList<List<Face<Point_3>>> partition;
 	public Proxy[] proxies;
 	public int k;
-	
+
 	public ShapeApproximation(Polyhedron_3<Point_3> polyhedron3D, int k) {
-		this.polyhedron3D=polyhedron3D;
+		this.polyhedron3D = polyhedron3D;
 		this.k = k;
 	}
 
 	/**
-	 * The main method performing the approximation process
-	 * To be implemented
+	 * The main method performing the approximation process To be implemented
 	 */
 	public void approximate() {
 		this.k_partitioning();
@@ -30,100 +28,103 @@ public class ShapeApproximation {
 		this.proxy_fitting();
 		// TODO: Meshing
 	}
-	
+
 	/**
-	 * In order to bootstrap the algorithm, the very first geometry
-	 * partitioning picks k triangles at random on the object, and
-	 * each of these triangles are assigned a proxy defined as the
-	 * triangle’s barycenter and its normal.
+	 * In order to bootstrap the algorithm, the very first geometry partitioning
+	 * picks k triangles at random on the object, and each of these triangles are
+	 * assigned a proxy defined as the triangle’s barycenter and its normal.
 	 */
 	public void k_partitioning() {
-		for(Face<Point_3> face : this.polyhedron3D.facets)
-			face.tag  = -1;
+		for (Face<Point_3> face : this.polyhedron3D.facets)
+			face.tag = -1;
 
 		// Pick k random triangles
 		final Random rnd = new Random();
 		List<Face<Point_3>> randomFaces = new ArrayList<Face<Point_3>>(k);
 		this.proxies = new Proxy[k];
 
-	    for (int i = 0; i < k; i++) {
-	        int v = 0;
-	        Face<Point_3> f;
-	        do {
-	            v = rnd.nextInt(this.polyhedron3D.sizeOfFacets());
-	            f = this.polyhedron3D.facets.get(v);
-	        } while (randomFaces.contains(f));
-	        randomFaces.add(f);
-	        this.proxies[i] = new Proxy(this.getBarycenterOfFace(f), this.getNormalOfFace(f));
-	        f.tag = i;
-	    }
-		
-	    // Partition surface into k regions
-	    this.partition = new ArrayList<List<Face<Point_3>>>(k);
-	    for(int i = 0; i < k; i++) {
-	    	this.partition.add(new ArrayList<Face<Point_3>>());
-	    }
-	    for(Face<Point_3> face : this.polyhedron3D.facets) {
-	    	if(face.tag != -1)
-	    		this.partition.get(face.tag).remove(face);
-	    	double minDistance = -1;
-	    	for(Face<Point_3> randomFace : randomFaces) {
-	    		double distance = this.barycenter_metric(face, randomFace);
-	    		if(minDistance == -1 || distance < minDistance) {
-	    			minDistance = distance;
-	    			face.tag = randomFace.tag;
-	    		}
-	    	}
-	    	this.partition.get(face.tag).add(face);
-	    }
+		for (int i = 0; i < k; i++) {
+			int v = 0;
+			Face<Point_3> f;
+			do {
+				v = rnd.nextInt(this.polyhedron3D.sizeOfFacets());
+				f = this.polyhedron3D.facets.get(v);
+			} while (randomFaces.contains(f));
+			randomFaces.add(f);
+			this.proxies[i] = new Proxy(this.getBarycenterOfFace(f), this.getNormalOfFace(f));
+			f.tag = i;
+		}
 
-	    // Debugging
-	    for(List<Face<Point_3>> r : partition)
-	    	System.out.print(r.size() + "\t");
-	    System.out.println();
-	    
+		// Partition surface into k regions
+		this.partition = new ArrayList<List<Face<Point_3>>>(k);
+		for (int i = 0; i < k; i++) {
+			this.partition.add(new ArrayList<Face<Point_3>>());
+		}
+		for (Face<Point_3> face : this.polyhedron3D.facets) {
+			if (face.tag != -1)
+				this.partition.get(face.tag).remove(face);
+			double minDistance = -1;
+			for (Face<Point_3> randomFace : randomFaces) {
+				double distance = this.barycenter_metric(face, randomFace);
+				if (minDistance == -1 || distance < minDistance) {
+					minDistance = distance;
+					face.tag = randomFace.tag;
+				}
+			}
+			this.partition.get(face.tag).add(face);
+		}
+
+//	    // Debugging
+//	    for(List<Face<Point_3>> r : partition)
+//	    	System.out.print(r.size() + "\t");
+//	    System.out.println();
+
 	}
-	
+
 	/**
-	 * Geometry partitioning
-	 * Knowing a current set of proxies P , we wish to update the partition
-	 * R while trying to minimize the distortion error E(R, P ) in the process.
+	 * Geometry partitioning Knowing a current set of proxies P , we wish to update
+	 * the partition R while trying to minimize the distortion error E(R, P ) in the
+	 * process.
 	 */
 	private void geometry_partitioning() {
-		
+
 		// Initial seeding
 		TempFace nearestFace;
 		DistortionErrorComparator comp = new DistortionErrorComparator(this);
-		PriorityQueue<TempFace> firstSeedTriangles = new PriorityQueue<TempFace>(3*this.polyhedron3D.sizeOfFacets(), (Comparator<? super Face<Point_3>>) comp);
-		PriorityQueue<TempFace> seedTriangles = new PriorityQueue<TempFace>(3*this.polyhedron3D.sizeOfFacets(), (Comparator<? super Face<Point_3>>) comp);
+		PriorityQueue<TempFace> firstSeedTriangles = new PriorityQueue<TempFace>(3 * this.polyhedron3D.sizeOfFacets(),
+				(Comparator<? super Face<Point_3>>) comp);
+		PriorityQueue<TempFace> seedTriangles = new PriorityQueue<TempFace>(3 * this.polyhedron3D.sizeOfFacets(),
+				(Comparator<? super Face<Point_3>>) comp);
 		double minDistortionError;
 		double currentError;
 		List<Face<Point_3>> region;
-		
-		for(int i = 0; i < k; i++) {
+
+		for (int i = 0; i < k; i++) {
 			region = this.partition.get(i);
-			minDistortionError = -1;
-			nearestFace = new TempFace(region.get(0));
-			for(Face<Point_3> triangle : region) {
-				currentError = L21_metric(triangle, this.proxies[i]);
-				triangle.tag = -1;
-				if(minDistortionError == -1 || currentError < minDistortionError) {
-					minDistortionError = currentError;
-					nearestFace = new TempFace(triangle);
+			if (region.size() > 0) {
+				minDistortionError = -1;
+				nearestFace = new TempFace(region.get(0));
+				for (Face<Point_3> triangle : region) {
+					currentError = L21_metric(triangle, this.proxies[i]);
+					triangle.tag = -1;
+					if (minDistortionError == -1 || currentError < minDistortionError) {
+						minDistortionError = currentError;
+						nearestFace = new TempFace(triangle);
+					}
 				}
+				nearestFace.tag = i;
+				firstSeedTriangles.add(nearestFace);
 			}
-			nearestFace.tag = i;
-			firstSeedTriangles.add(nearestFace);
 		}
-		
+
 		// Distortion minimizing flooding
 		this.partition = new ArrayList<List<Face<Point_3>>>(k);
-		for(int i = 0; i < k; i++) {
-	    	this.partition.add(new ArrayList<Face<Point_3>>());
-	    }
+		for (int i = 0; i < k; i++) {
+			this.partition.add(new ArrayList<Face<Point_3>>());
+		}
 
 		seedTriangles.addAll(firstSeedTriangles);
-		for(TempFace seedTriangle: firstSeedTriangles) {
+		for (TempFace seedTriangle : firstSeedTriangles) {
 			Halfedge<Point_3> h = seedTriangle.copiedFace.getEdge();
 			Halfedge<Point_3> e = h.getNext();
 			do {
@@ -131,67 +132,69 @@ public class ShapeApproximation {
 				f.tag = seedTriangle.tag;
 				seedTriangles.add(f);
 				e = e.getNext();
-			}while(!e.equals(h));
+			} while (!e.equals(h));
 		}
-		
-		while(!seedTriangles.isEmpty()) {
+
+		while (!seedTriangles.isEmpty()) {
 			TempFace tempF = seedTriangles.poll();
 			Face<Point_3> f = tempF.copiedFace;
-			if(f.tag == -1) {
+			if (f.tag == -1) {
 				f.tag = tempF.tag;
 				this.partition.get(f.tag).add(f);
 				Halfedge<Point_3> h = f.getEdge();
 				Halfedge<Point_3> e = h.getNext();
 				do {
-					if(e.getOpposite().face.tag == -1) {
+					if (e.getOpposite().face.tag == -1) {
 						TempFace g = new TempFace(e.getOpposite().face);
 						g.tag = f.tag;
 						seedTriangles.add(g);
 					}
 					e = e.getNext();
-				}while(!e.equals(h));
+				} while (!e.equals(h));
 			}
-				
+
 		}
-		
-		// Debugging
-	    for(List<Face<Point_3>> r : partition)
-	    	System.out.print(r.size() + "\t");
-	    System.out.println();
+
+//		// Debugging
+//	    for(List<Face<Point_3>> r : partition)
+//	    	System.out.print(r.size() + "\t");
+//	    System.out.println();
 	}
-	
+
 	private void proxy_fitting() {
-		for(int i = 0; i < k; i++) {
+		for (int i = 0; i < k; i++) {
 			List<Face<Point_3>> region = this.partition.get(i);
 			int n = region.size();
-			Vector_3 N = new Vector_3(0,0,0);
+			Vector_3 N = new Vector_3(0, 0, 0);
 			Point_3[] barycenters = new Point_3[n];
-			for(int j = 0; j < n; j++) {
+			for (int j = 0; j < n; j++) {
 				Face<Point_3> f = region.get(j);
 				barycenters[j] = this.getBarycenterOfFace(f);
 				N = N.sum(this.getNormalOfFace(f).multiplyByScalar(this.areaOfTriangle(f)));
 			}
 			this.proxies[i].X.barycenter(barycenters);
-			this.proxies[i].N = N.divisionByScalar(Math.sqrt((double) N.squaredLength()));
+			if ((double) N.squaredLength() != 0)
+				this.proxies[i].N = N.divisionByScalar(Math.sqrt((double) N.squaredLength()));
 		}
 	}
-	
+
 	/**
 	 * Distance between the barycenters of two surfaces.
 	 */
 	private double barycenter_metric(Face<Point_3> surface1, Face<Point_3> surface2) {
 		Point_3 barycenter1 = this.getBarycenterOfFace(surface1);
 		Point_3 barycenter2 = this.getBarycenterOfFace(surface2);
-		return (double)barycenter1.distanceFrom(barycenter2);
+		return (double) barycenter1.distanceFrom(barycenter2);
 	}
-	
+
 	public double barycenter_proxy_metric(Face<Point_3> surface, Proxy proxy) {
 		Point_3 barycenter1 = this.getBarycenterOfFace(surface);
-		return (double)barycenter1.distanceFrom(proxy.X);
+		return (double) barycenter1.distanceFrom(proxy.X);
 	}
-	
+
 	/**
 	 * Area calculated thanks to Heron's formula
+	 * 
 	 * @param triangle
 	 * @return
 	 */
@@ -200,78 +203,78 @@ public class ShapeApproximation {
 		double A; // area
 		double a, b, c; // side lengths of triangle
 
-		if(triangle instanceof TempFace)
-			triangle = ((TempFace)triangle).copiedFace;
+		if (triangle instanceof TempFace)
+			triangle = ((TempFace) triangle).copiedFace;
 
 		int[] vertexIndices = triangle.getVertexIndices(this.polyhedron3D);
 		Point_3[] points = new Point_3[3];
-		for(int i=0; i < 3; i++)
+		for (int i = 0; i < 3; i++)
 			points[i] = this.polyhedron3D.vertices.get(vertexIndices[i]).getPoint();
 		a = (double) points[0].distanceFrom(points[1]);
 		b = (double) points[1].distanceFrom(points[2]);
 		c = (double) points[0].distanceFrom(points[2]);
-		S = 0.5 * (a+b+c);
-		A = Math.sqrt(S*(S-a)*(S-b)*(S-c));
-		
+		S = 0.5 * (a + b + c);
+		A = Math.sqrt(S * (S - a) * (S - b) * (S - c));
+
 		return A;
 	}
-	
+
 	public double L2_metric(Face<Point_3> surface, Proxy proxy) {
 		throw new RuntimeException("Not implemented yet");
 	}
-	
+
 	public double L21_metric(Face<Point_3> surface, Proxy proxy) {
 		// Distance between the normals
 		Point_3 x = this.getBarycenterOfFace(surface);
 		Vector_3 n = this.getNormalOfFace(surface);
 		Vector_3 prod = n.crossProduct(proxy.N);
 		double norm = Math.sqrt((double) prod.squaredLength());
-		if(norm == 0.) {
+		if (norm == 0.) {
 			double numerator = (double) x.distanceFrom(proxy.X);
 			double denominator = Math.sqrt((double) n.squaredLength() + 1);
 			return numerator / denominator;
 		}
 		prod = prod.divisionByScalar(norm);
 		Vector_3 diff = (Vector_3) x.minus(proxy.X);
-		double distance = Math.abs((double)prod.innerProduct(diff));
-		
+		double distance = Math.abs((double) prod.innerProduct(diff));
+
 		double A = this.areaOfTriangle(surface);
 
-		return A*Math.pow(distance, 2);
+		return A * Math.pow(distance, 2);
 	}
 
 	private double region_L21_metric(List<Face<Point_3>> region, Proxy proxy) {
 		double result = 0;
-		for(Face<Point_3> triangle : region)
+		for (Face<Point_3> triangle : region)
 			result += this.L21_metric(triangle, proxy);
 		return result;
 	}
-	
+
 	private Point_3 getBarycenterOfFace(Face<Point_3> surface) {
-		if(surface instanceof TempFace)
-			surface = ((TempFace)surface).copiedFace;
+		if (surface instanceof TempFace)
+			surface = ((TempFace) surface).copiedFace;
 		int[] vertexIndices = surface.getVertexIndices(this.polyhedron3D);
 		Point_3 barycenter = new Point_3();
 		Point_3[] points = new Point_3[vertexIndices.length];
-		for(int i=0; i < vertexIndices.length; i++)
+		for (int i = 0; i < vertexIndices.length; i++)
 			points[i] = this.polyhedron3D.vertices.get(vertexIndices[i]).getPoint();
 		barycenter.barycenter(points);
 		return barycenter;
 	}
-	
+
 	private Vector_3 getNormalOfFace(Face<Point_3> surface) {
-		if(surface instanceof TempFace)
-			surface = ((TempFace)surface).copiedFace;
+		if (surface instanceof TempFace)
+			surface = ((TempFace) surface).copiedFace;
 		int[] vertexIndices = surface.getVertexIndices(this.polyhedron3D);
-		if(vertexIndices.length < 3)
+		if (vertexIndices.length < 3)
 			throw new RuntimeException("Not a valid surface");
 		Point_3[] points = new Point_3[3];
-		for(int i=0; i < 3; i++)
+		for (int i = 0; i < 3; i++)
 			points[i] = this.polyhedron3D.vertices.get(vertexIndices[i]).getPoint();
 		Vector_3 V = new Vector_3(points[0], points[1]);
 		Vector_3 W = new Vector_3(points[0], points[2]);
 		Vector_3 N = V.crossProduct(W);
-		N = N.divisionByScalar(Math.sqrt((double)N.squaredLength()));
+		N = N.divisionByScalar(Math.sqrt((double) N.squaredLength()));
 		return N;
 	}
 
