@@ -24,8 +24,17 @@ public class ShapeApproximation {
 	 */
 	public void approximate() {
 		this.random_bootstrap();
-		this.geometry_partitioning();
-		this.proxy_fitting();
+
+		int oldPartitionHashcode;
+		int nbIt = 0;
+		do {
+			oldPartitionHashcode = this.partition.hashCode();
+			this.geometry_partitioning();
+			this.proxy_fitting();
+			nbIt++;
+		} while (oldPartitionHashcode != this.partition.hashCode());
+		System.out.println(nbIt + " iteration(s) before convergence");
+
 		// TODO: Meshing
 	}
 
@@ -156,23 +165,10 @@ public class ShapeApproximation {
 	}
 
 	public double L21_metric(Face<Point_3> surface, Proxy proxy) {
-		// Distance between the normals
-		Point_3 x = this.getBarycenterOfFace(surface);
 		Vector_3 n = this.getNormalOfFace(surface);
-		Vector_3 prod = n.crossProduct(proxy.N);
-		double norm = Math.sqrt((double) prod.squaredLength());
-		if (norm == 0.) {
-			double numerator = (double) x.distanceFrom(proxy.X);
-			double denominator = Math.sqrt((double) n.squaredLength() + 1);
-			return numerator / denominator;
-		}
-		prod = prod.divisionByScalar(norm);
-		Vector_3 diff = (Vector_3) x.minus(proxy.X);
-		double distance = Math.abs((double) prod.innerProduct(diff));
-
+		double squaredDist = (double) n.difference(proxy.N).squaredLength();
 		double A = this.areaOfTriangle(surface);
-
-		return A * Math.pow(distance, 2);
+		return A * squaredDist;
 	}
 
 	/**
@@ -195,7 +191,7 @@ public class ShapeApproximation {
 			points[i] = this.polyhedron3D.vertices.get(vertexIndices[i]).getPoint();
 		a = (double) points[0].distanceFrom(points[1]);
 		b = (double) points[1].distanceFrom(points[2]);
-		c = (double) points[0].distanceFrom(points[2]);
+		c = (double) points[2].distanceFrom(points[0]);
 		S = 0.5 * (a + b + c);
 		A = Math.sqrt(S * (S - a) * (S - b) * (S - c));
 
