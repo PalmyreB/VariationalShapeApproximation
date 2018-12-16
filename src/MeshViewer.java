@@ -14,18 +14,19 @@ public class MeshViewer extends PApplet {
 	ShapeApproximation sa;
 	int renderType = 1; // choice of type of rendering
 	int renderModes = 3; // number of rendering modes
-	int k = 50; // number of regions of partition
+	int k = 4; // number of regions of partition
 
-	// String filename="OFF/high_genus.off";
-	// String filename="OFF/sphere.off";
 	// String filename="OFF/cube.off";
-	// String filename="OFF/torus_33.off";
-	// String filename="OFF/tore.off";
 	// String filename="OFF/tri_hedra.off";
-	// String filename="OFF/letter_a.off";
-	// String filename="OFF/star.off";
-	String filename = "OFF/tri_triceratops.off";
+	String filename="OFF/torus_33.off";
+	// String filename="OFF/tore.off";
+	// String filename="OFF/sphere.off";
 	// String filename="OFF/twisted.off";
+	// String filename="OFF/letter_a.off";
+	// String filename="OFF/bague.off";
+	// String filename="OFF/high_genus.off";
+	// String filename = "OFF/tri_triceratops.off";
+	// String filename="OFF/tri_cow.off";
 	// String filename="OFF/tri_gargoyle.off";
 
 	public void setup() {
@@ -67,6 +68,10 @@ public class MeshViewer extends PApplet {
 		case ('A'):
 			this.approximate();
 			break;
+		case ('g'):
+		case ('G'):
+			this.geometry_partition();
+			break;
 		case ('p'):
 		case ('P'):
 			this.partition();
@@ -84,7 +89,13 @@ public class MeshViewer extends PApplet {
 	}
 
 	public void partition() {
-		this.sa.k_partitioning();
+		this.sa.random_bootstrap();
+		this.mesh.updateScaleFactor();
+		this.mesh.polyhedron3D.isValid(false);
+	}
+	
+	public void geometry_partition() {
+		this.sa.geometry_partitioning();
 		this.mesh.updateScaleFactor();
 		this.mesh.polyhedron3D.isValid(false);
 	}

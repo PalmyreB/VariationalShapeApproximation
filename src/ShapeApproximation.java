@@ -23,7 +23,7 @@ public class ShapeApproximation {
 	 * The main method performing the approximation process To be implemented
 	 */
 	public void approximate() {
-		this.k_partitioning();
+		this.random_bootstrap();
 		this.geometry_partitioning();
 		this.proxy_fitting();
 		// TODO: Meshing
@@ -34,9 +34,14 @@ public class ShapeApproximation {
 	 * picks k triangles at random on the object, and each of these triangles are
 	 * assigned a proxy defined as the triangle’s barycenter and its normal.
 	 */
-	public void k_partitioning() {
+	public void random_bootstrap() {
 		for (Face<Point_3> face : this.polyhedron3D.facets)
 			face.tag = -1;
+
+		this.partition = new ArrayList<List<Face<Point_3>>>(k);
+		for (int i = 0; i < k; i++) {
+			this.partition.add(new ArrayList<Face<Point_3>>());
+		}
 
 		// Pick k random triangles
 		final Random rnd = new Random();
@@ -53,31 +58,8 @@ public class ShapeApproximation {
 			randomFaces.add(f);
 			this.proxies[i] = new Proxy(this.getBarycenterOfFace(f), this.getNormalOfFace(f));
 			f.tag = i;
+			this.partition.get(i).add(f);
 		}
-
-		// Partition surface into k regions
-		this.partition = new ArrayList<List<Face<Point_3>>>(k);
-		for (int i = 0; i < k; i++) {
-			this.partition.add(new ArrayList<Face<Point_3>>());
-		}
-		for (Face<Point_3> face : this.polyhedron3D.facets) {
-			if (face.tag != -1)
-				this.partition.get(face.tag).remove(face);
-			double minDistance = -1;
-			for (Face<Point_3> randomFace : randomFaces) {
-				double distance = this.barycenter_metric(face, randomFace);
-				if (minDistance == -1 || distance < minDistance) {
-					minDistance = distance;
-					face.tag = randomFace.tag;
-				}
-			}
-			this.partition.get(face.tag).add(face);
-		}
-
-//	    // Debugging
-//	    for(List<Face<Point_3>> r : partition)
-//	    	System.out.print(r.size() + "\t");
-//	    System.out.println();
 
 	}
 
@@ -86,26 +68,22 @@ public class ShapeApproximation {
 	 * the partition R while trying to minimize the distortion error E(R, P ) in the
 	 * process.
 	 */
-	private void geometry_partitioning() {
+	public void geometry_partitioning() {
 
-		// Initial seeding
-		TempFace nearestFace;
 		DistortionErrorComparator comp = new DistortionErrorComparator(this);
 		PriorityQueue<TempFace> firstSeedTriangles = new PriorityQueue<TempFace>(3 * this.polyhedron3D.sizeOfFacets(),
 				(Comparator<? super Face<Point_3>>) comp);
 		PriorityQueue<TempFace> seedTriangles = new PriorityQueue<TempFace>(3 * this.polyhedron3D.sizeOfFacets(),
 				(Comparator<? super Face<Point_3>>) comp);
-		double minDistortionError;
-		double currentError;
-		List<Face<Point_3>> region;
 
+		// Initial seeding
 		for (int i = 0; i < k; i++) {
-			region = this.partition.get(i);
+			List<Face<Point_3>> region = this.partition.get(i);
 			if (region.size() > 0) {
-				minDistortionError = -1;
-				nearestFace = new TempFace(region.get(0));
+				double minDistortionError = -1;
+				TempFace nearestFace = new TempFace(region.get(0));
 				for (Face<Point_3> triangle : region) {
-					currentError = L21_metric(triangle, this.proxies[i]);
+					double currentError = L21_metric(triangle, this.proxies[i]);
 					triangle.tag = -1;
 					if (minDistortionError == -1 || currentError < minDistortionError) {
 						minDistortionError = currentError;
@@ -118,10 +96,8 @@ public class ShapeApproximation {
 		}
 
 		// Distortion minimizing flooding
-		this.partition = new ArrayList<List<Face<Point_3>>>(k);
-		for (int i = 0; i < k; i++) {
-			this.partition.add(new ArrayList<Face<Point_3>>());
-		}
+		for (List<Face<Point_3>> region : this.partition)
+			region.clear();
 
 		seedTriangles.addAll(firstSeedTriangles);
 		for (TempFace seedTriangle : firstSeedTriangles) {
@@ -155,10 +131,6 @@ public class ShapeApproximation {
 
 		}
 
-//		// Debugging
-//	    for(List<Face<Point_3>> r : partition)
-//	    	System.out.print(r.size() + "\t");
-//	    System.out.println();
 	}
 
 	private void proxy_fitting() {
@@ -178,18 +150,28 @@ public class ShapeApproximation {
 		}
 	}
 
-	/**
-	 * Distance between the barycenters of two surfaces.
-	 */
-	private double barycenter_metric(Face<Point_3> surface1, Face<Point_3> surface2) {
-		Point_3 barycenter1 = this.getBarycenterOfFace(surface1);
-		Point_3 barycenter2 = this.getBarycenterOfFace(surface2);
-		return (double) barycenter1.distanceFrom(barycenter2);
+	public double L2_metric(Face<Point_3> surface, Proxy proxy) {
+		throw new RuntimeException("Not implemented yet");
 	}
 
-	public double barycenter_proxy_metric(Face<Point_3> surface, Proxy proxy) {
-		Point_3 barycenter1 = this.getBarycenterOfFace(surface);
-		return (double) barycenter1.distanceFrom(proxy.X);
+	public double L21_metric(Face<Point_3> surface, Proxy proxy) {
+		// Distance between the normals
+		Point_3 x = this.getBarycenterOfFace(surface);
+		Vector_3 n = this.getNormalOfFace(surface);
+		Vector_3 prod = n.crossProduct(proxy.N);
+		double norm = Math.sqrt((double) prod.squaredLength());
+		if (norm == 0.) {
+			double numerator = (double) x.distanceFrom(proxy.X);
+			double denominator = Math.sqrt((double) n.squaredLength() + 1);
+			return numerator / denominator;
+		}
+		prod = prod.divisionByScalar(norm);
+		Vector_3 diff = (Vector_3) x.minus(proxy.X);
+		double distance = Math.abs((double) prod.innerProduct(diff));
+
+		double A = this.areaOfTriangle(surface);
+
+		return A * Math.pow(distance, 2);
 	}
 
 	/**
@@ -217,37 +199,6 @@ public class ShapeApproximation {
 		A = Math.sqrt(S * (S - a) * (S - b) * (S - c));
 
 		return A;
-	}
-
-	public double L2_metric(Face<Point_3> surface, Proxy proxy) {
-		throw new RuntimeException("Not implemented yet");
-	}
-
-	public double L21_metric(Face<Point_3> surface, Proxy proxy) {
-		// Distance between the normals
-		Point_3 x = this.getBarycenterOfFace(surface);
-		Vector_3 n = this.getNormalOfFace(surface);
-		Vector_3 prod = n.crossProduct(proxy.N);
-		double norm = Math.sqrt((double) prod.squaredLength());
-		if (norm == 0.) {
-			double numerator = (double) x.distanceFrom(proxy.X);
-			double denominator = Math.sqrt((double) n.squaredLength() + 1);
-			return numerator / denominator;
-		}
-		prod = prod.divisionByScalar(norm);
-		Vector_3 diff = (Vector_3) x.minus(proxy.X);
-		double distance = Math.abs((double) prod.innerProduct(diff));
-
-		double A = this.areaOfTriangle(surface);
-
-		return A * Math.pow(distance, 2);
-	}
-
-	private double region_L21_metric(List<Face<Point_3>> region, Proxy proxy) {
-		double result = 0;
-		for (Face<Point_3> triangle : region)
-			result += this.L21_metric(triangle, proxy);
-		return result;
 	}
 
 	private Point_3 getBarycenterOfFace(Face<Point_3> surface) {
