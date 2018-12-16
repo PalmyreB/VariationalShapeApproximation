@@ -20,7 +20,7 @@ public class ShapeApproximation {
 	}
 
 	/**
-	 * The main method performing the approximation process To be implemented
+	 * The main method performing the approximation process
 	 */
 	public void approximate() {
 		this.random_bootstrap();
@@ -71,7 +71,7 @@ public class ShapeApproximation {
 	public void geometry_partitioning() {
 
 		DistortionErrorComparator comp = new DistortionErrorComparator(this);
-		PriorityQueue<TempFace> firstSeedTriangles = new PriorityQueue<TempFace>(3 * this.polyhedron3D.sizeOfFacets(),
+		PriorityQueue<TempFace> firstSeedTriangles = new PriorityQueue<TempFace>(this.k,
 				(Comparator<? super Face<Point_3>>) comp);
 		PriorityQueue<TempFace> seedTriangles = new PriorityQueue<TempFace>(3 * this.polyhedron3D.sizeOfFacets(),
 				(Comparator<? super Face<Point_3>>) comp);
@@ -91,6 +91,7 @@ public class ShapeApproximation {
 					}
 				}
 				nearestFace.tag = i;
+				// nearestFace.copiedFace.tag = i;
 				firstSeedTriangles.add(nearestFace);
 			}
 		}
@@ -102,7 +103,7 @@ public class ShapeApproximation {
 		seedTriangles.addAll(firstSeedTriangles);
 		for (TempFace seedTriangle : firstSeedTriangles) {
 			Halfedge<Point_3> h = seedTriangle.copiedFace.getEdge();
-			Halfedge<Point_3> e = h.getNext();
+			Halfedge<Point_3> e = h;
 			do {
 				TempFace f = new TempFace(e.getOpposite().face);
 				f.tag = seedTriangle.tag;
@@ -118,7 +119,7 @@ public class ShapeApproximation {
 				f.tag = tempF.tag;
 				this.partition.get(f.tag).add(f);
 				Halfedge<Point_3> h = f.getEdge();
-				Halfedge<Point_3> e = h.getNext();
+				Halfedge<Point_3> e = h;
 				do {
 					if (e.getOpposite().face.tag == -1) {
 						TempFace g = new TempFace(e.getOpposite().face);
@@ -133,7 +134,7 @@ public class ShapeApproximation {
 
 	}
 
-	private void proxy_fitting() {
+	public void proxy_fitting() {
 		for (int i = 0; i < k; i++) {
 			List<Face<Point_3>> region = this.partition.get(i);
 			int n = region.size();
