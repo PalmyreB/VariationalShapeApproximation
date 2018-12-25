@@ -14,20 +14,20 @@ public class MeshViewer extends PApplet {
 	ShapeApproximation sa;
 	int renderType = 1; // choice of type of rendering
 	int renderModes = 3; // number of rendering modes
-	int k = 4; // number of regions of partition
+	int k = 20; // number of regions of partition
 
-	// String filename="OFF/cube.off";
-	// String filename="OFF/tri_hedra.off";
-	String filename="OFF/torus_33.off";
-	// String filename="OFF/tore.off";
-	// String filename="OFF/sphere.off";
-	// String filename="OFF/twisted.off";
-	// String filename="OFF/letter_a.off";
-	// String filename="OFF/bague.off";
-	// String filename="OFF/high_genus.off";
+	// String filename = "OFF/cube.off";
+	// String filename = "OFF/tri_hedra.off";
+	// String filename = "OFF/torus_33.off";
+	// String filename = "OFF/tore.off";
+	// String filename = "OFF/sphere.off";
+	// String filename = "OFF/twisted.off";
+	String filename = "OFF/letter_a.off";
+	// String filename = "OFF/bague.off";
+	// String filename = "OFF/high_genus.off";
 	// String filename = "OFF/tri_triceratops.off";
-	// String filename="OFF/tri_cow.off";
-	// String filename="OFF/tri_gargoyle.off";
+	// String filename = "OFF/tri_cow.off";
+	// String filename = "OFF/tri_gargoyle.off";
 
 	public void setup() {
 		size(800, 600, P3D);
@@ -36,13 +36,6 @@ public class MeshViewer extends PApplet {
 		this.mesh = new SurfaceMesh(this, filename);
 		this.sa = new ShapeApproximation(this.mesh.polyhedron3D, this.k);
 
-//		  System.out.println(""+ms.polyhedron3D.facesToString());
-//		  ms.subdivide();
-//		  ms.polyhedron3D.isValid(false);
-//		  ms.subdivide();
-//		  ms.polyhedron3D.isValid(false);
-//		  ms.subdivide();
-//		  ms.polyhedron3D.isValid(false);
 	}
 
 	public void draw() {
@@ -77,7 +70,7 @@ public class MeshViewer extends PApplet {
 			this.partition();
 			break;
 		case ('r'):
-			this.renderType = (this.renderType + 1) % this.renderModes;
+			this.renderType = (this.renderType - 1) % this.renderModes;
 			break;
 		}
 	}
@@ -93,9 +86,10 @@ public class MeshViewer extends PApplet {
 		this.mesh.updateScaleFactor();
 		this.mesh.polyhedron3D.isValid(false);
 	}
-	
+
 	public void geometry_partition() {
 		this.sa.geometry_partitioning();
+		this.sa.proxy_fitting();
 		this.mesh.updateScaleFactor();
 		this.mesh.polyhedron3D.isValid(false);
 	}
