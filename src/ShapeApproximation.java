@@ -23,19 +23,25 @@ public class ShapeApproximation {
 	 * The main method performing the approximation process
 	 */
 	public void approximate() {
+		long startTime = System.nanoTime();
+		System.out.println("k = " + this.k);
 		this.random_bootstrap();
 
 		int oldPartitionHashcode;
 		int nbIt = 0;
+		int maxNbIt = 50;
 		do {
 			oldPartitionHashcode = this.partition.hashCode();
 			this.geometry_partitioning();
 			this.proxy_fitting();
 			nbIt++;
-		} while (oldPartitionHashcode != this.partition.hashCode());
+		} while (oldPartitionHashcode != this.partition.hashCode() && nbIt < maxNbIt);
 		System.out.println(nbIt + " iteration(s) before convergence");
 
 		// TODO: Meshing
+
+		long elapsedTime = System.nanoTime() - startTime;
+		System.out.println("Elapsed time: " + elapsedTime + " ns");
 	}
 
 	/**
