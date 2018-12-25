@@ -84,7 +84,13 @@ public class SurfaceMesh {
 		Point_3 u = h.getOpposite().getVertex().getPoint();
 		view.noStroke();
 		// view.fill(200,200,200,255); // color of the triangle
-		view.fill(f.tag * 200 % 256, 100 + f.tag * 100 % 256, 100 - f.tag * 150 % 256, 255);
+		// view.fill(f.tag * 200 % 256, 100 + f.tag * 100 % 256, 100 - f.tag * 150 %
+		// 256, 255);
+		// view.fill(255* (float) f.tag / (float) view.k, 200, 255, 255);
+		int r = 100 + f.tag * 30 % 256;
+		int g = 50 + f.tag * 100 % 256;
+		int b = 255 - (r+g)/2; // 256 - f.tag * 30;
+		view.fill(r, g, b, 255);
 
 		while (pEdge.getVertex() != h.getOpposite().getVertex()) {
 			Point_3 v = pEdge.getOpposite().getVertex().getPoint();
